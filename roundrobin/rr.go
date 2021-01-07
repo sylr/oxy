@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"sync"
 
-	"github.com/vulcand/oxy/v2/utils"
+	"github.com/vulcand/sylr/v2/utils"
 )
 
 // Weight is an optional functional argument that sets weight of the server

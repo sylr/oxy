@@ -7,7 +7,7 @@ import (
 
 	"github.com/mailgun/holster/v3/clock"
 	"github.com/stretchr/testify/assert"
-	"github.com/vulcand/oxy/v2/utils"
+	"github.com/vulcand/sylr/v2/utils"
 )
 
 func TestRampUp(t *testing.T) {

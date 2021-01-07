@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/vulcand/oxy/v2/utils"
+	"github.com/vulcand/sylr/v2/utils"
 )
 
 // Option is a functional option setter for Tracer

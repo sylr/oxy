@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/mailgun/holster/v3/clock"
-	"github.com/vulcand/oxy/v2/memmetrics"
-	"github.com/vulcand/oxy/v2/utils"
+	"github.com/vulcand/sylr/v2/memmetrics"
+	"github.com/vulcand/sylr/v2/utils"
 )
 
 // RebalancerOption - functional option setter for rebalancer

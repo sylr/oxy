@@ -10,8 +10,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/vulcand/oxy/v2/forward"
-	"github.com/vulcand/oxy/v2/testutils"
+	"github.com/vulcand/sylr/v2/forward"
+	"github.com/vulcand/sylr/v2/testutils"
 )
 
 func TestBasic(t *testing.T) {

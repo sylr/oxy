@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/mailgun/holster/v3/collections"
-	"github.com/vulcand/oxy/v2/utils"
+	"github.com/vulcand/sylr/v2/utils"
 )
 
 // DefaultCapacity default capacity

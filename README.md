@@ -1,5 +1,7 @@
-Oxy [![Build Status](https://travis-ci.org/vulcand/oxy.svg?branch=master)](https://travis-ci.org/vulcand/oxy)
-=====
+Oxy
+===
+
+This is a fork of [Oxy](https://github.com/vulcand/oxy).
 
 Oxy is a Go library with HTTP handlers that enhance HTTP standard library:
 
@@ -19,10 +21,9 @@ Status
 
 * Initial design is completed
 * Covered by tests
-* Used as a reverse proxy engine in [Vulcand](https://github.com/vulcand/vulcand)
 
 Quickstart
------------
+----------
 
 Every handler is ``http.Handler``, so writing and plugging in a middleware is easy. Let us write a simple reverse proxy as an example:
 
@@ -33,8 +34,8 @@ Simple reverse proxy
 
 import (
 	"net/http"
-	"github.com/vulcand/oxy/v2/forward"
-	"github.com/vulcand/oxy/v2/testutils"
+	"github.com/vulcand/sylr/v2/forward"
+	"github.com/vulcand/sylr/v2/testutils"
 )
 
 // Forwards incoming requests to whatever location URL points to, adds proper forwarding headers
@@ -62,8 +63,8 @@ As a next step, let us add a round robin load-balancer:
 
 import (
 	"net/http"
-	"github.com/vulcand/oxy/v2/forward"
-	"github.com/vulcand/oxy/v2/roundrobin"
+	"github.com/vulcand/sylr/v2/forward"
+	"github.com/vulcand/sylr/v2/roundrobin"
 )
 
 // Forwards incoming requests to whatever location URL points to, adds proper forwarding headers
@@ -88,9 +89,9 @@ What if we want to handle retries and replay the request in case of errors? `buf
 
 import (
 	"net/http"
-	"github.com/vulcand/oxy/v2/forward"
-	"github.com/vulcand/oxy/v2/buffer"
-	"github.com/vulcand/oxy/v2/roundrobin"
+	"github.com/vulcand/sylr/v2/forward"
+	"github.com/vulcand/sylr/v2/buffer"
+	"github.com/vulcand/sylr/v2/roundrobin"
 )
 
 // Forwards incoming requests to whatever location URL points to, adds proper forwarding headers
@@ -124,7 +125,7 @@ github.com/sirupsen/logrus
 
 ```go
 import (
-	"github.com/vulcand/oxy/v2/cbreaker"
+	"github.com/vulcand/sylr/v2/cbreaker"
 	"github.com/sirupsen/logrus"
 )
 
@@ -147,7 +148,7 @@ go.uber.org/zap
 
 ```go
 import (
-	"github.com/vulcand/oxy/v2/cbreaker"
+	"github.com/vulcand/sylr/v2/cbreaker"
 	"go.uber.org/zap/zap"
 	"go.uber.org/zap/zapcore"
 )

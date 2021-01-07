@@ -43,7 +43,7 @@ func (*DefaultLogger) Fatalf(string, ...interface{}) {}
 // If the logger you use is zap:
 //
 // 		import (
-// 			"github.com/vulcand/oxy/v2/cbreaker"
+// 			"github.com/vulcand/sylr/v2/cbreaker"
 // 			"go.uber.org/zap/zap"
 // 			"go.uber.org/zap/zapcore"
 // 		)
