@@ -6,23 +6,45 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"testing"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/vulcand/oxy/memmetrics"
-	"github.com/vulcand/oxy/testutils"
+	"github.com/vulcand/oxy/v2/memmetrics"
+	"github.com/vulcand/oxy/v2/testutils"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 const triggerNetRatio = `NetworkErrorRatio() > 0.5`
+
+var (
+	// logrus
+	logrusLogger    = logrus.StandardLogger()
+	logrusDebugFunc = func() bool {
+		return logrusLogger.Level >= logrus.DebugLevel
+	}
+
+	// zap
+	zapAtomLevel     = zap.NewAtomicLevel()
+	zapEncoderCfg    = zap.NewProductionEncoderConfig()
+	zapCore          = zapcore.NewCore(zapcore.NewJSONEncoder(zapEncoderCfg), zapcore.Lock(os.Stdout), zapAtomLevel)
+	zapLogger        = zap.New(zapCore)
+	zapSugaredLogger = zapLogger.Sugar()
+	zapDebug         = func() bool {
+		return zapAtomLevel.Enabled(zapcore.DebugLevel)
+	}
+)
 
 func TestStandbyCycle(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("hello"))
 	})
 
-	cb, err := New(handler, triggerNetRatio)
+	cb, err := New(handler, triggerNetRatio, Logger(logrusLogger), Debug(logrusDebugFunc))
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(cb)
@@ -41,7 +63,7 @@ func TestFullCycle(t *testing.T) {
 
 	clock := testutils.GetClock()
 
-	cb, err := New(handler, triggerNetRatio, Clock(clock))
+	cb, err := New(handler, triggerNetRatio, Clock(clock), Logger(zapSugaredLogger), Debug(zapDebug))
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(cb)
@@ -101,7 +123,7 @@ func TestRedirectWithPath(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	cb, err := New(handler, triggerNetRatio, Clock(testutils.GetClock()), Fallback(fallbackRedirectPath))
+	cb, err := New(handler, triggerNetRatio, Clock(testutils.GetClock()), Fallback(fallbackRedirectPath), Logger(logrusLogger), Debug(logrusDebugFunc))
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(cb)
@@ -131,7 +153,7 @@ func TestRedirect(t *testing.T) {
 	fallbackRedirect, err := NewRedirectFallback(Redirect{URL: "http://localhost:5000"})
 	require.NoError(t, err)
 
-	cb, err := New(handler, triggerNetRatio, Clock(testutils.GetClock()), Fallback(fallbackRedirect))
+	cb, err := New(handler, triggerNetRatio, Clock(testutils.GetClock()), Fallback(fallbackRedirect), Logger(logrusLogger), Debug(logrusDebugFunc))
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(cb)
@@ -160,7 +182,7 @@ func TestTriggerDuringRecovery(t *testing.T) {
 
 	clock := testutils.GetClock()
 
-	cb, err := New(handler, triggerNetRatio, Clock(clock), CheckPeriod(time.Microsecond))
+	cb, err := New(handler, triggerNetRatio, Clock(clock), CheckPeriod(time.Microsecond), Logger(logrusLogger), Debug(logrusDebugFunc))
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(cb)
@@ -236,7 +258,7 @@ func TestSideEffects(t *testing.T) {
 
 	clock := testutils.GetClock()
 
-	cb, err := New(handler, triggerNetRatio, Clock(clock), CheckPeriod(time.Microsecond), OnTripped(onTripped), OnStandby(onStandby))
+	cb, err := New(handler, triggerNetRatio, Clock(clock), CheckPeriod(time.Microsecond), OnTripped(onTripped), OnStandby(onStandby), Logger(logrusLogger), Debug(logrusDebugFunc))
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(cb)

@@ -8,14 +8,35 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/vulcand/oxy/forward"
-	"github.com/vulcand/oxy/testutils"
+	"github.com/vulcand/oxy/v2/forward"
+	"github.com/vulcand/oxy/v2/testutils"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+)
+
+var (
+	// logrus
+	logrusLogger    = logrus.StandardLogger()
+	logrusDebugFunc = func() bool {
+		return logrusLogger.Level >= logrus.DebugLevel
+	}
+
+	// zap
+	zapAtomLevel     = zap.NewAtomicLevel()
+	zapEncoderCfg    = zap.NewProductionEncoderConfig()
+	zapCore          = zapcore.NewCore(zapcore.NewJSONEncoder(zapEncoderCfg), zapcore.Lock(os.Stdout), zapAtomLevel)
+	zapLogger        = zap.New(zapCore)
+	zapSugaredLogger = zapLogger.Sugar()
+	zapDebug         = func() bool {
+		return zapAtomLevel.Enabled(zapcore.DebugLevel)
+	}
 )
 
 type noOpNextHTTPHandler struct{}
@@ -35,7 +56,7 @@ func TestSimple(t *testing.T) {
 	defer srv.Close()
 
 	// forwarder will proxy the request to whatever destination
-	fwd, err := forward.New(forward.Stream(true))
+	fwd, err := forward.New(forward.Stream(true), forward.Logger(zapSugaredLogger), forward.Debug(zapDebug))
 	require.NoError(t, err)
 
 	// this is our redirect to server
@@ -83,7 +104,7 @@ func TestChunkedEncodingSuccess(t *testing.T) {
 	defer srv.Close()
 
 	// forwarder will proxy the request to whatever destination
-	fwd, err := forward.New(forward.Stream(true))
+	fwd, err := forward.New(forward.Stream(true), forward.Logger(logrusLogger), forward.Debug(logrusDebugFunc))
 	require.NoError(t, err)
 
 	// this is our redirect to server
@@ -137,7 +158,7 @@ func TestRequestLimitReached(t *testing.T) {
 	})
 
 	// stream handler will forward requests to redirect
-	st, err := New(rdr)
+	st, err := New(rdr, Logger(logrusLogger), Debug(logrusDebugFunc))
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(st)
@@ -165,7 +186,7 @@ func TestResponseLimitReached(t *testing.T) {
 	})
 
 	// stream handler will forward requests to redirect
-	st, err := New(rdr)
+	st, err := New(rdr, Logger(logrusLogger), Debug(logrusDebugFunc))
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(st)
@@ -193,7 +214,7 @@ func TestFileStreamingResponse(t *testing.T) {
 	})
 
 	// stream handler will forward requests to redirect
-	st, err := New(rdr)
+	st, err := New(rdr, Logger(logrusLogger), Debug(logrusDebugFunc))
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(st)
@@ -212,7 +233,7 @@ func TestCustomErrorHandler(t *testing.T) {
 	defer srv.Close()
 
 	// forwarder will proxy the request to whatever destination
-	fwd, err := forward.New(forward.Stream(true))
+	fwd, err := forward.New(forward.Stream(true), forward.Logger(logrusLogger), forward.Debug(logrusDebugFunc))
 	require.NoError(t, err)
 
 	// this is our redirect to server
@@ -221,7 +242,7 @@ func TestCustomErrorHandler(t *testing.T) {
 		fwd.ServeHTTP(w, req)
 	})
 
-	st, err := New(rdr)
+	st, err := New(rdr, Logger(logrusLogger), Debug(logrusDebugFunc))
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(st)
@@ -239,7 +260,7 @@ func TestNotModified(t *testing.T) {
 	defer srv.Close()
 
 	// forwarder will proxy the request to whatever destination
-	fwd, err := forward.New(forward.Stream(true))
+	fwd, err := forward.New(forward.Stream(true), forward.Logger(logrusLogger), forward.Debug(logrusDebugFunc))
 	require.NoError(t, err)
 
 	// this is our redirect to server
@@ -249,7 +270,7 @@ func TestNotModified(t *testing.T) {
 	})
 
 	// stream handler will forward requests to redirect
-	st, err := New(rdr)
+	st, err := New(rdr, Logger(logrusLogger), Debug(logrusDebugFunc))
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(st)
@@ -267,7 +288,7 @@ func TestNoBody(t *testing.T) {
 	defer srv.Close()
 
 	// forwarder will proxy the request to whatever destination
-	fwd, err := forward.New(forward.Stream(true))
+	fwd, err := forward.New(forward.Stream(true), forward.Logger(logrusLogger), forward.Debug(logrusDebugFunc))
 	require.NoError(t, err)
 
 	// this is our redirect to server
@@ -277,7 +298,7 @@ func TestNoBody(t *testing.T) {
 	})
 
 	// stream handler will forward requests to redirect
-	st, err := New(rdr)
+	st, err := New(rdr, Logger(logrusLogger), Debug(logrusDebugFunc))
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(st)
@@ -297,7 +318,7 @@ func TestPreservesTLS(t *testing.T) {
 	defer srv.Close()
 
 	// forwarder will proxy the request to whatever destination
-	fwd, err := forward.New(forward.Stream(true))
+	fwd, err := forward.New(forward.Stream(true), forward.Logger(logrusLogger), forward.Debug(logrusDebugFunc))
 	require.NoError(t, err)
 
 	var cs *tls.ConnectionState
@@ -309,7 +330,7 @@ func TestPreservesTLS(t *testing.T) {
 	})
 
 	// stream handler will forward requests to redirect
-	st, err := New(rdr)
+	st, err := New(rdr, Logger(logrusLogger), Debug(logrusDebugFunc))
 	require.NoError(t, err)
 
 	proxy := httptest.NewUnstartedServer(st)
@@ -326,9 +347,6 @@ func TestPreservesTLS(t *testing.T) {
 func BenchmarkLoggingDebugLevel(b *testing.B) {
 	streamer, _ := New(noOpNextHTTPHandler{})
 
-	log.SetLevel(log.DebugLevel)
-	log.SetOutput(&noOpIoWriter{}) // Make sure we don't emit a bunch of stuff on screen
-
 	for i := 0; i < b.N; i++ {
 		heavyServeHTTPLoad(streamer)
 	}
@@ -336,9 +354,6 @@ func BenchmarkLoggingDebugLevel(b *testing.B) {
 
 func BenchmarkLoggingInfoLevel(b *testing.B) {
 	streamer, _ := New(noOpNextHTTPHandler{})
-
-	log.SetLevel(log.InfoLevel)
-	log.SetOutput(&noOpIoWriter{}) // Make sure we don't emit a bunch of stuff on screen
 
 	for i := 0; i < b.N; i++ {
 		heavyServeHTTPLoad(streamer)

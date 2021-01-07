@@ -7,9 +7,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/vulcand/oxy/forward"
-	"github.com/vulcand/oxy/roundrobin"
-	"github.com/vulcand/oxy/testutils"
+	"github.com/vulcand/oxy/v2/forward"
+	"github.com/vulcand/oxy/v2/roundrobin"
+	"github.com/vulcand/oxy/v2/testutils"
 )
 
 func TestSuccess(t *testing.T) {
@@ -74,7 +74,7 @@ func TestRetryExceedAttempts(t *testing.T) {
 
 func newBufferMiddleware(t *testing.T, p string) (*roundrobin.RoundRobin, *Buffer) {
 	// forwarder will proxy the request to whatever destination
-	fwd, err := forward.New()
+	fwd, err := forward.New(forward.Logger(logrusLogger), forward.Debug(logrusDebugFunc))
 	require.NoError(t, err)
 
 	// load balancer will round robin request
