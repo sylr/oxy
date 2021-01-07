@@ -7,8 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mailgun/timetools"
-	"github.com/mailgun/ttlmap"
+	"github.com/mailgun/holster/v3/collections"
 	"github.com/vulcand/oxy/v2/utils"
 )
 
@@ -65,9 +64,8 @@ type TokenLimiter struct {
 	defaultRates *RateSet
 	extract      utils.SourceExtractor
 	extractRates RateExtractor
-	clock        timetools.TimeProvider
 	mutex        sync.Mutex
-	bucketSets   *ttlmap.TtlMap
+	bucketSets   *collections.TTLMap
 	errHandler   utils.ErrorHandler
 	capacity     int
 	next         http.Handler
@@ -99,10 +97,7 @@ func New(next http.Handler, extract utils.SourceExtractor, defaultRates *RateSet
 		}
 	}
 	setDefaults(tl)
-	bucketSets, err := ttlmap.NewMapWithProvider(tl.capacity, tl.clock)
-	if err != nil {
-		return nil, err
-	}
+	bucketSets := collections.NewTTLMap(tl.capacity)
 	tl.bucketSets = bucketSets
 	return tl, nil
 }
@@ -157,7 +152,7 @@ func (tl *TokenLimiter) consumeRates(req *http.Request, source string, amount in
 		bucketSet = bucketSetI.(*TokenBucketSet)
 		bucketSet.Update(effectiveRates)
 	} else {
-		bucketSet = NewTokenBucketSet(effectiveRates, tl.clock)
+		bucketSet = NewTokenBucketSet(effectiveRates)
 		// We set ttl as 10 times rate period. E.g. if rate is 100 requests/second per client ip
 		// the counters for this ip will expire after 10 seconds of inactivity
 		tl.bucketSets.Set(source, bucketSet, int(bucketSet.maxPeriod/time.Second)*10+1)
@@ -236,14 +231,6 @@ func ExtractRates(e RateExtractor) TokenLimiterOption {
 	}
 }
 
-// Clock sets the clock
-func Clock(clock timetools.TimeProvider) TokenLimiterOption {
-	return func(cl *TokenLimiter) error {
-		cl.clock = clock
-		return nil
-	}
-}
-
 // Capacity sets the capacity
 func Capacity(cap int) TokenLimiterOption {
 	return func(cl *TokenLimiter) error {
@@ -260,9 +247,6 @@ var defaultErrHandler = &RateErrHandler{}
 func setDefaults(tl *TokenLimiter) {
 	if tl.capacity <= 0 {
 		tl.capacity = DefaultCapacity
-	}
-	if tl.clock == nil {
-		tl.clock = &timetools.RealTime{}
 	}
 	if tl.errHandler == nil {
 		tl.errHandler = defaultErrHandler
