@@ -21,7 +21,7 @@ Examples of a streaming middleware:
 
   // sample HTTP handler
   handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-    w.Write([]byte("hello"))
+  	w.Write([]byte("hello"))
   })
 
   // Stream will literally pass through to the next handler without ANY buffering
@@ -54,8 +54,7 @@ type Stream struct {
 	next       http.Handler
 	errHandler utils.ErrorHandler
 
-	log   utils.Logger
-	debug utils.LoggerDebugFunc
+	log utils.Logger
 }
 
 // New returns a new streamer middleware. New() function supports optional functional arguments
@@ -65,7 +64,6 @@ func New(next http.Handler, setters ...optSetter) (*Stream, error) {
 		maxRequestBodyBytes:  DefaultMaxBodyBytes,
 		maxResponseBodyBytes: DefaultMaxBodyBytes,
 		log:                  &utils.DefaultLogger{},
-		debug:                utils.DefaultLoggerDebugFunc,
 	}
 	for _, s := range setters {
 		if err := s(strm); err != nil {
@@ -83,15 +81,6 @@ func Logger(l utils.Logger) optSetter {
 	}
 }
 
-// Debug defines if we should generate debug logs. It will still depends on the
-// logger to print them or not.
-func Debug(d utils.LoggerDebugFunc) optSetter {
-	return func(s *Stream) error {
-		s.debug = d
-		return nil
-	}
-}
-
 type optSetter func(s *Stream) error
 
 // Wrap sets the next handler to be called by stream handler.
@@ -101,11 +90,5 @@ func (s *Stream) Wrap(next http.Handler) error {
 }
 
 func (s *Stream) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if s.debug() {
-		dump := utils.DumpHttpRequest(req)
-		s.log.Debugf("vulcand/oxy/stream: begin ServeHttp on request: %s", dump)
-		defer s.log.Debugf("vulcand/oxy/stream: completed ServeHttp on request: %s", dump)
-	}
-
 	s.next.ServeHTTP(w, req)
 }

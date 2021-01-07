@@ -60,8 +60,7 @@ type CircuitBreaker struct {
 	fallback http.Handler
 	next     http.Handler
 
-	log   utils.Logger
-	debug utils.LoggerDebugFunc
+	log utils.Logger
 }
 
 // New creates a new CircuitBreaker middleware
@@ -75,7 +74,6 @@ func New(next http.Handler, expression string, options ...CircuitBreakerOption) 
 		recoveryDuration: defaultRecoveryDuration,
 		fallback:         defaultFallback,
 		log:              &utils.DefaultLogger{},
-		debug:            utils.DefaultLoggerDebugFunc,
 	}
 
 	for _, s := range options {
@@ -107,22 +105,7 @@ func Logger(l utils.Logger) CircuitBreakerOption {
 	}
 }
 
-// Debug defines if we should generate debug logs. It will still depends on the
-// logger to print them or not.
-func Debug(d utils.LoggerDebugFunc) CircuitBreakerOption {
-	return func(c *CircuitBreaker) error {
-		c.debug = d
-		return nil
-	}
-}
-
 func (c *CircuitBreaker) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if c.debug() {
-		dump := utils.DumpHttpRequest(req)
-		c.log.Debugf("circuitbreaker: begin ServeHttp on request: %s", dump)
-		defer c.log.Debugf("circuitbreaker: completed ServeHttp on request: %s", dump)
-	}
-
 	if c.activateFallback(w, req) {
 		c.fallback.ServeHTTP(w, req)
 		return
@@ -180,7 +163,7 @@ func (c *CircuitBreaker) activateFallback(w http.ResponseWriter, req *http.Reque
 
 func (c *CircuitBreaker) serve(w http.ResponseWriter, req *http.Request) {
 	start := clock.Now().UTC()
-	p := utils.NewProxyWriterWithLogger(w, c.log, c.debug)
+	p := utils.NewProxyWriterWithLogger(w, c.log)
 	c.next.ServeHTTP(p, req)
 
 	latency := clock.Now().UTC().Sub(start)
@@ -267,7 +250,7 @@ func (c *CircuitBreaker) checkAndSet() {
 
 func (c *CircuitBreaker) setRecovering() {
 	c.setState(stateRecovering, clock.Now().UTC().Add(c.recoveryDuration))
-	c.rc = newRatioController(c.recoveryDuration, c.log, c.debug)
+	c.rc = newRatioController(c.recoveryDuration, c.log)
 }
 
 // CircuitBreakerOption represents an option you can pass to New.

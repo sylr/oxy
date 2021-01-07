@@ -57,8 +57,7 @@ type RoundRobin struct {
 	stickySession          *StickySession
 	requestRewriteListener RequestRewriteListener
 
-	log   utils.Logger
-	debug utils.LoggerDebugFunc
+	log utils.Logger
 }
 
 // New created a new RoundRobin
@@ -69,9 +68,7 @@ func New(next http.Handler, opts ...LBOption) (*RoundRobin, error) {
 		mutex:         &sync.Mutex{},
 		servers:       []*server{},
 		stickySession: nil,
-
-		log:   &utils.DefaultLogger{},
-		debug: utils.DefaultLoggerDebugFunc,
+		log:           &utils.DefaultLogger{},
 	}
 	for _, o := range opts {
 		if err := o(rr); err != nil {
@@ -92,29 +89,12 @@ func RoundRobinLogger(l utils.Logger) LBOption {
 	}
 }
 
-// RoundRobinDebug defines if we should generate debug logs. It will still depends on the
-// logger to print them or not.
-func RoundRobinDebug(d utils.LoggerDebugFunc) LBOption {
-	return func(r *RoundRobin) error {
-		r.debug = d
-		return nil
-	}
-}
-
 // Next returns the next handler
 func (r *RoundRobin) Next() http.Handler {
 	return r.next
 }
 
 func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	var dump string
-
-	if r.debug() {
-		dump = utils.DumpHttpRequest(req)
-		r.log.Debugf("roundrobin/rr: begin ServeHttp on request: %s", dump)
-		defer r.log.Debugf("roundrobin/rr: completed ServeHttp on request: %s", dump)
-	}
-
 	// make shallow copy of request before chaning anything to avoid side effects
 	newReq := *req
 	stuck := false
@@ -142,10 +122,6 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			r.stickySession.StickBackend(url, &w)
 		}
 		newReq.URL = url
-	}
-
-	if r.debug() {
-		r.log.Debugf("vulcand/oxy/roundrobin/rr: Forwarding this request %s to URL %s", dump, newReq.URL)
 	}
 
 	// Emit event to a listener if one exists

@@ -70,8 +70,7 @@ type TokenLimiter struct {
 	capacity     int
 	next         http.Handler
 
-	log   utils.Logger
-	debug utils.LoggerDebugFunc
+	log utils.Logger
 }
 
 // New constructs a `TokenLimiter` middleware instance.
@@ -86,9 +85,7 @@ func New(next http.Handler, extract utils.SourceExtractor, defaultRates *RateSet
 		next:         next,
 		defaultRates: defaultRates,
 		extract:      extract,
-
-		log:   &utils.DefaultLogger{},
-		debug: utils.DefaultLoggerDebugFunc,
+		log:          &utils.DefaultLogger{},
 	}
 
 	for _, o := range opts {
@@ -106,15 +103,6 @@ func New(next http.Handler, extract utils.SourceExtractor, defaultRates *RateSet
 func Logger(l utils.Logger) TokenLimiterOption {
 	return func(tl *TokenLimiter) error {
 		tl.log = l
-		return nil
-	}
-}
-
-// Debug defines if we should generate debug logs. It will still depends on the
-// logger to print them or not.
-func Debug(d utils.LoggerDebugFunc) TokenLimiterOption {
-	return func(t *TokenLimiter) error {
-		t.debug = d
 		return nil
 	}
 }

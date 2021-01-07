@@ -14,7 +14,7 @@ func TestRampUp(t *testing.T) {
 	defer clock.Freeze(time.Now()).Unfreeze()
 
 	duration := 10 * time.Second
-	rc := newRatioController(duration, &utils.DefaultLogger{}, utils.DefaultLoggerDebugFunc)
+	rc := newRatioController(duration, &utils.DefaultLogger{})
 
 	allowed, denied := 0, 0
 	for i := 0; i < int(duration/time.Millisecond); i++ {

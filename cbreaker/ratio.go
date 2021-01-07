@@ -19,18 +19,14 @@ type ratioController struct {
 	start    time.Time
 	allowed  int
 	denied   int
-
-	log   utils.Logger
-	debug utils.LoggerDebugFunc
+	log      utils.Logger
 }
 
-func newRatioController(rampUp time.Duration, log utils.Logger, debug utils.LoggerDebugFunc) *ratioController {
+func newRatioController(rampUp time.Duration, log utils.Logger) *ratioController {
 	return &ratioController{
 		duration: rampUp,
 		start:    clock.Now().UTC(),
-
-		log:   log,
-		debug: debug,
+		log:      log,
 	}
 }
 

@@ -77,8 +77,7 @@ type Buffer struct {
 	next       http.Handler
 	errHandler utils.ErrorHandler
 
-	log   utils.Logger
-	debug utils.LoggerDebugFunc
+	log utils.Logger
 }
 
 // New returns a new buffer middleware. New() function supports optional functional arguments
@@ -92,8 +91,7 @@ func New(next http.Handler, setters ...optSetter) (*Buffer, error) {
 		maxResponseBodyBytes: DefaultMaxBodyBytes,
 		memResponseBodyBytes: DefaultMemBodyBytes,
 
-		log:   &utils.DefaultLogger{},
-		debug: utils.DefaultLoggerDebugFunc,
+		log: &utils.DefaultLogger{},
 	}
 	for _, s := range setters {
 		if err := s(strm); err != nil {
@@ -111,15 +109,6 @@ func New(next http.Handler, setters ...optSetter) (*Buffer, error) {
 func Logger(l utils.Logger) optSetter {
 	return func(b *Buffer) error {
 		b.log = l
-		return nil
-	}
-}
-
-// Debug defines if we should generate debug logs. It will still depends on the
-// logger to print them or not.
-func Debug(d utils.LoggerDebugFunc) optSetter {
-	return func(b *Buffer) error {
-		b.debug = d
 		return nil
 	}
 }
@@ -221,12 +210,6 @@ func (b *Buffer) Wrap(next http.Handler) error {
 }
 
 func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if b.debug() {
-		dump := utils.DumpHttpRequest(req)
-		b.log.Debugf("buffer: begin ServeHttp on request: %s", dump)
-		defer b.log.Debugf("buffer: completed ServeHttp on request: %s", dump)
-	}
-
 	if err := b.checkLimit(req); err != nil {
 		b.log.Errorf("buffer: request body over limit, err: %v", err)
 		b.errHandler.ServeHTTP(w, req, err)

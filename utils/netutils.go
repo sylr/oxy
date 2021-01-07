@@ -16,21 +16,19 @@ type ProxyWriter struct {
 	code   int
 	length int64
 
-	log   Logger
-	debug LoggerDebugFunc
+	log Logger
 }
 
 // NewProxyWriter creates a new ProxyWriter
 func NewProxyWriter(w http.ResponseWriter) *ProxyWriter {
-	return NewProxyWriterWithLogger(w, &DefaultLogger{}, DefaultLoggerDebugFunc)
+	return NewProxyWriterWithLogger(w, &DefaultLogger{})
 }
 
 // NewProxyWriterWithLogger creates a new ProxyWriter
-func NewProxyWriterWithLogger(w http.ResponseWriter, logger Logger, debug LoggerDebugFunc) *ProxyWriter {
+func NewProxyWriterWithLogger(w http.ResponseWriter, logger Logger) *ProxyWriter {
 	return &ProxyWriter{
-		w:     w,
-		log:   logger,
-		debug: debug,
+		w:   w,
+		log: logger,
 	}
 }
 
@@ -93,16 +91,15 @@ func (p *ProxyWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 
 // NewBufferWriter creates a new BufferWriter
 func NewBufferWriter(w io.WriteCloser) *BufferWriter {
-	return NewBufferWriterWithLogger(w, &DefaultLogger{}, DefaultLoggerDebugFunc)
+	return NewBufferWriterWithLogger(w, &DefaultLogger{})
 }
 
 // NewBufferWriterWithLogger creates a new BufferWriter with a custom logger
-func NewBufferWriterWithLogger(w io.WriteCloser, log Logger, debug LoggerDebugFunc) *BufferWriter {
+func NewBufferWriterWithLogger(w io.WriteCloser, log Logger) *BufferWriter {
 	return &BufferWriter{
-		W:     w,
-		H:     make(http.Header),
-		log:   log,
-		debug: debug,
+		W:   w,
+		H:   make(http.Header),
+		log: log,
 	}
 }
 
@@ -112,8 +109,7 @@ type BufferWriter struct {
 	Code int
 	W    io.WriteCloser
 
-	log   Logger
-	debug LoggerDebugFunc
+	log Logger
 }
 
 // Close close the writer

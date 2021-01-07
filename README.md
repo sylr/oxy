@@ -130,14 +130,10 @@ stdLogger := logrus.StandardLogger()
 stdLogger.SetLevel(logrus.DebugLevel)
 
 logrusLogger := stdLogger.WithField("lib", "vulcand/oxy")
-logrusDebugFunc := func() bool {
-	return logrusLogger.Logger.Level >= logrus.DebugLevel
-}
 
 cbLogger := cbreaker.Logger(logrusLogger)
-cbDebug := cbreaker.Debug(logrusDebugFunc)
 
-cb, err := cbreaker.New(next, "NetworkErrorRatio() > 0.3", cbLogger, cbDebug)
+cb, err := cbreaker.New(next, "NetworkErrorRatio() > 0.3", cbLogger)
 ```
 
 go.uber.org/zap
@@ -165,7 +161,6 @@ zapDebug := func() bool {
 }
 
 cbLogger := cbreaker.Logger(zapSugaredLogger)
-cbDebug := cbreaker.Debug(zapDebug)
 
-cb, err := cbreaker.New(next, "NetworkErrorRatio() > 0.3", cbLogger, cbDebug)
+cb, err := cbreaker.New(next, "NetworkErrorRatio() > 0.3", cbLogger)
 ```

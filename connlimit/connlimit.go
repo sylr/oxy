@@ -21,7 +21,6 @@ type ConnLimiter struct {
 
 	errHandler utils.ErrorHandler
 	log        utils.Logger
-	debug      utils.LoggerDebugFunc
 }
 
 // New creates a new ConnLimiter
@@ -36,7 +35,6 @@ func New(next http.Handler, extract utils.SourceExtractor, maxConnections int64,
 		connections:    make(map[string]int64),
 		next:           next,
 		log:            &utils.DefaultLogger{},
-		debug:          utils.DefaultLoggerDebugFunc,
 	}
 
 	for _, o := range options {
@@ -46,8 +44,7 @@ func New(next http.Handler, extract utils.SourceExtractor, maxConnections int64,
 	}
 	if cl.errHandler == nil {
 		cl.errHandler = &ConnErrHandler{
-			log:   cl.log,
-			debug: cl.debug,
+			log: cl.log,
 		}
 	}
 	return cl, nil
@@ -57,15 +54,6 @@ func New(next http.Handler, extract utils.SourceExtractor, maxConnections int64,
 func Logger(l utils.Logger) ConnLimitOption {
 	return func(cl *ConnLimiter) error {
 		cl.log = l
-		return nil
-	}
-}
-
-// Debug defines if we should generate debug logs. It will still depends on the
-// logger to print them or not.
-func Debug(d utils.LoggerDebugFunc) ConnLimitOption {
-	return func(cl *ConnLimiter) error {
-		cl.debug = d
 		return nil
 	}
 }
@@ -131,17 +119,10 @@ func (m *MaxConnError) Error() string {
 
 // ConnErrHandler connection limiter error handler
 type ConnErrHandler struct {
-	log   utils.Logger
-	debug utils.LoggerDebugFunc
+	log utils.Logger
 }
 
 func (e *ConnErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
-	if e.debug() {
-		dump := utils.DumpHttpRequest(req)
-		e.log.Debugf("connlimit: begin ServeHttp on request: %s", dump)
-		defer e.log.Debugf("connlimit: completed ServeHttp on request: %s", dump)
-	}
-
 	if _, ok := err.(*MaxConnError); ok {
 		w.WriteHeader(429)
 		w.Write([]byte(err.Error()))

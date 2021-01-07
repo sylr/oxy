@@ -28,14 +28,12 @@ type Webhook struct {
 
 // WebhookSideEffect a web hook side effect
 type WebhookSideEffect struct {
-	w Webhook
-
-	log   utils.Logger
-	debug utils.LoggerDebugFunc
+	w   Webhook
+	log utils.Logger
 }
 
 // NewWebhookSideEffectsWithLogger creates a new WebhookSideEffect
-func NewWebhookSideEffectsWithLogger(w Webhook, log utils.Logger, debug utils.LoggerDebugFunc) (*WebhookSideEffect, error) {
+func NewWebhookSideEffectsWithLogger(w Webhook, log utils.Logger) (*WebhookSideEffect, error) {
 	if w.Method == "" {
 		return nil, fmt.Errorf("Supply method")
 	}
@@ -44,12 +42,12 @@ func NewWebhookSideEffectsWithLogger(w Webhook, log utils.Logger, debug utils.Lo
 		return nil, err
 	}
 
-	return &WebhookSideEffect{w: w, log: log, debug: debug}, nil
+	return &WebhookSideEffect{w: w, log: log}, nil
 }
 
 // NewWebhookSideEffect creates a new WebhookSideEffect
 func NewWebhookSideEffect(w Webhook) (*WebhookSideEffect, error) {
-	return NewWebhookSideEffectsWithLogger(w, &utils.DefaultLogger{}, utils.DefaultLoggerDebugFunc)
+	return NewWebhookSideEffectsWithLogger(w, &utils.DefaultLogger{})
 }
 
 func (w *WebhookSideEffect) getBody() io.Reader {

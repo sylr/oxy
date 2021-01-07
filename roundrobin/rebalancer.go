@@ -51,8 +51,7 @@ type Rebalancer struct {
 
 	requestRewriteListener RequestRewriteListener
 
-	log   utils.Logger
-	debug utils.LoggerDebugFunc
+	log utils.Logger
 }
 
 // RebalancerBackoff sets a beck off duration
@@ -101,9 +100,7 @@ func NewRebalancer(handler balancerHandler, opts ...RebalancerOption) (*Rebalanc
 		mtx:           &sync.Mutex{},
 		next:          handler,
 		stickySession: nil,
-
-		log:   &utils.DefaultLogger{},
-		debug: utils.DefaultLoggerDebugFunc,
+		log:           &utils.DefaultLogger{},
 	}
 	for _, o := range opts {
 		if err := o(rb); err != nil {
@@ -140,15 +137,6 @@ func RebalancerLogger(l utils.Logger) RebalancerOption {
 	}
 }
 
-// RebalancerDebug defines if we should generate debug logs. It will still depends on the
-// logger to print them or not.
-func RebalancerDebug(d utils.LoggerDebugFunc) RebalancerOption {
-	return func(rb *Rebalancer) error {
-		rb.debug = d
-		return nil
-	}
-}
-
 // Servers gets all servers
 func (rb *Rebalancer) Servers() []*url.URL {
 	rb.mtx.Lock()
@@ -158,14 +146,6 @@ func (rb *Rebalancer) Servers() []*url.URL {
 }
 
 func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	var dump string
-
-	if rb.debug() {
-		dump = utils.DumpHttpRequest(req)
-		rb.log.Debugf("vulcand/oxy/roundrobin/rebalancer: begin ServeHttp on request: %s", dump)
-		defer rb.log.Debugf("vulcand/oxy/roundrobin/rebalancer: completed ServeHttp on request: %s", dump)
-	}
-
 	pw := utils.NewProxyWriter(w)
 	start := clock.Now().UTC()
 
@@ -191,11 +171,6 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		if err != nil {
 			rb.errHandler.ServeHTTP(w, req, err)
 			return
-		}
-
-		if rb.debug() {
-			// log which backend URL we're sending this request to
-			rb.log.Debugf("vulcand/oxy/roundrobin/rebalancer: Forwarding this request %s to %s", dump, fwdURL)
 		}
 
 		if rb.stickySession != nil {
