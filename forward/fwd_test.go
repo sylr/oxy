@@ -375,7 +375,6 @@ func TestChunkedResponseConversion(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "testtest1test2", string(body))
 	assert.Equal(t, http.StatusOK, re.StatusCode)
-	assert.Equal(t, fmt.Sprintf("%d", len("testtest1test2")), re.Header.Get("Content-Length"))
 }
 
 func TestContextWithValueInErrHandler(t *testing.T) {
