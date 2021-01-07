@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/vulcand/sylr/v2/utils"
+	"abstraction.fr/oxy/v2/utils"
 )
 
 // SideEffect a side effect

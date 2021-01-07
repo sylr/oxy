@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
+	"abstraction.fr/oxy/v2/forward"
+	"abstraction.fr/oxy/v2/testutils"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/vulcand/sylr/v2/forward"
-	"github.com/vulcand/sylr/v2/testutils"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )

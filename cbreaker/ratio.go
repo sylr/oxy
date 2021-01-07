@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/vulcand/sylr/v2/utils"
+	"abstraction.fr/oxy/v2/utils"
 
 	"github.com/mailgun/holster/v3/clock"
 )

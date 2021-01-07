@@ -7,11 +7,11 @@ import (
 	"os"
 	"testing"
 
+	"abstraction.fr/oxy/v2/testutils"
+	"abstraction.fr/oxy/v2/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/vulcand/sylr/v2/testutils"
-	"github.com/vulcand/sylr/v2/utils"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )

@@ -5,11 +5,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"abstraction.fr/oxy/v2/forward"
+	"abstraction.fr/oxy/v2/roundrobin"
+	"abstraction.fr/oxy/v2/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/vulcand/sylr/v2/forward"
-	"github.com/vulcand/sylr/v2/roundrobin"
-	"github.com/vulcand/sylr/v2/testutils"
 )
 
 func TestSuccess(t *testing.T) {

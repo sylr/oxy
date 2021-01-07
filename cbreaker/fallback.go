@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/vulcand/sylr/v2/utils"
+	"abstraction.fr/oxy/v2/utils"
 )
 
 // Response response model

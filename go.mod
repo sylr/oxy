@@ -1,4 +1,4 @@
-module github.com/vulcand/sylr/v2
+module abstraction.fr/oxy/v2
 
 go 1.13
 

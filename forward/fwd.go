@@ -18,8 +18,8 @@ import (
 	"strings"
 	"time"
 
+	"abstraction.fr/oxy/v2/utils"
 	"github.com/gorilla/websocket"
-	"github.com/vulcand/sylr/v2/utils"
 )
 
 // ReqRewriter can alter request headers and body

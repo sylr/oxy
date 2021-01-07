@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"abstraction.fr/oxy/v2/utils"
 	"github.com/mailgun/holster/v3/collections"
-	"github.com/vulcand/sylr/v2/utils"
 )
 
 // DefaultCapacity default capacity

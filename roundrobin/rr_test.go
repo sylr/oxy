@@ -5,11 +5,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"abstraction.fr/oxy/v2/forward"
+	"abstraction.fr/oxy/v2/testutils"
+	"abstraction.fr/oxy/v2/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/vulcand/sylr/v2/forward"
-	"github.com/vulcand/sylr/v2/testutils"
-	"github.com/vulcand/sylr/v2/utils"
 )
 
 func TestNoServers(t *testing.T) {

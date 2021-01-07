@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
+	"abstraction.fr/oxy/v2/forward"
+	"abstraction.fr/oxy/v2/testutils"
 	"github.com/mailgun/holster/v3/clock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/vulcand/sylr/v2/forward"
-	"github.com/vulcand/sylr/v2/testutils"
 )
 
 func TestRebalancerNormalOperation(t *testing.T) {
