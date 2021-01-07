@@ -9,7 +9,7 @@ Examples of a buffering middleware:
 
   // sample HTTP handler
   handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-    w.Write([]byte("hello"))
+  	w.Write([]byte("hello"))
   })
 
   // Buffer will read the body in buffer before passing the request to the handler
@@ -19,14 +19,18 @@ Examples of a buffering middleware:
 
   // This version will buffer up to 2MB in memory and will serialize any extra
   // to a temporary file, if the request size exceeds 10MB it will reject the request
-  buffer.New(handler,
-    buffer.MemRequestBodyBytes(2 * 1024 * 1024),
-    buffer.MaxRequestBodyBytes(10 * 1024 * 1024))
+  buffer.New(
+  	handler,
+  	buffer.MemRequestBodyBytes(2 * 1024 * 1024),
+  	buffer.MaxRequestBodyBytes(10 * 1024 * 1024),
+  )
 
   // Will do the same as above, but with responses
-  buffer.New(handler,
-    buffer.MemResponseBodyBytes(2 * 1024 * 1024),
-    buffer.MaxResponseBodyBytes(10 * 1024 * 1024))
+  buffer.New(
+  	handler,
+  	buffer.MemResponseBodyBytes(2 * 1024 * 1024),
+  	buffer.MaxResponseBodyBytes(10 * 1024 * 1024),
+  )
 
   // Buffer will replay the request if the handler returns error at least 3 times
   // before returning the response

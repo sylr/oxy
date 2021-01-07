@@ -31,7 +31,6 @@ Simple reverse proxy
 ====================
 
 ```go
-
 import (
 	"net/http"
 	"abstraction.fr/oxy/v2/forward"
@@ -60,7 +59,6 @@ As a next step, let us add a round robin load-balancer:
 
 
 ```go
-
 import (
 	"net/http"
 	"abstraction.fr/oxy/v2/forward"
@@ -86,7 +84,6 @@ What if we want to handle retries and replay the request in case of errors? `buf
 
 
 ```go
-
 import (
 	"net/http"
 	"abstraction.fr/oxy/v2/forward"
