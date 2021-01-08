@@ -8,6 +8,7 @@ import (
 	"abstraction.fr/oxy/v2/forward"
 	"abstraction.fr/oxy/v2/roundrobin"
 	"abstraction.fr/oxy/v2/testutils"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

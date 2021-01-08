@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"abstraction.fr/oxy/v2/memmetrics"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

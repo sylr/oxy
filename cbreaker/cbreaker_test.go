@@ -12,6 +12,7 @@ import (
 
 	"abstraction.fr/oxy/v2/memmetrics"
 	"abstraction.fr/oxy/v2/testutils"
+
 	"github.com/mailgun/holster/v3/clock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"

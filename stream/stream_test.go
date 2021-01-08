@@ -14,6 +14,7 @@ import (
 
 	"abstraction.fr/oxy/v2/forward"
 	"abstraction.fr/oxy/v2/testutils"
+
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
