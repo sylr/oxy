@@ -10,8 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-	"github.com/vulcand/oxy/utils"
+	"abstraction.fr/oxy/v2/utils"
 )
 
 // Option is a functional option setter for Tracer
@@ -49,7 +48,7 @@ type Tracer struct {
 	respHeaders []string
 	writer      io.Writer
 
-	log *log.Logger
+	log utils.Logger
 }
 
 // New creates a new Tracer middleware that emits all the request/response information in structured format
@@ -59,8 +58,7 @@ func New(next http.Handler, writer io.Writer, opts ...Option) (*Tracer, error) {
 	t := &Tracer{
 		writer: writer,
 		next:   next,
-
-		log: log.StandardLogger(),
+		log:    &utils.DefaultLogger{},
 	}
 	for _, o := range opts {
 		if err := o(t); err != nil {
@@ -74,9 +72,7 @@ func New(next http.Handler, writer io.Writer, opts ...Option) (*Tracer, error) {
 }
 
 // Logger defines the logger the tracer will use.
-//
-// It defaults to logrus.StandardLogger(), the global logger used by logrus.
-func Logger(l *log.Logger) Option {
+func Logger(l utils.Logger) Option {
 	return func(t *Tracer) error {
 		t.log = l
 		return nil

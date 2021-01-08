@@ -9,8 +9,7 @@ import (
 	"net/url"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
-	"github.com/vulcand/oxy/utils"
+	"abstraction.fr/oxy/v2/utils"
 )
 
 // SideEffect a side effect
@@ -29,13 +28,12 @@ type Webhook struct {
 
 // WebhookSideEffect a web hook side effect
 type WebhookSideEffect struct {
-	w Webhook
-
-	log *log.Logger
+	w   Webhook
+	log utils.Logger
 }
 
 // NewWebhookSideEffectsWithLogger creates a new WebhookSideEffect
-func NewWebhookSideEffectsWithLogger(w Webhook, l *log.Logger) (*WebhookSideEffect, error) {
+func NewWebhookSideEffectsWithLogger(w Webhook, log utils.Logger) (*WebhookSideEffect, error) {
 	if w.Method == "" {
 		return nil, fmt.Errorf("Supply method")
 	}
@@ -44,12 +42,12 @@ func NewWebhookSideEffectsWithLogger(w Webhook, l *log.Logger) (*WebhookSideEffe
 		return nil, err
 	}
 
-	return &WebhookSideEffect{w: w, log: l}, nil
+	return &WebhookSideEffect{w: w, log: log}, nil
 }
 
 // NewWebhookSideEffect creates a new WebhookSideEffect
 func NewWebhookSideEffect(w Webhook) (*WebhookSideEffect, error) {
-	return NewWebhookSideEffectsWithLogger(w, log.StandardLogger())
+	return NewWebhookSideEffectsWithLogger(w, &utils.DefaultLogger{})
 }
 
 func (w *WebhookSideEffect) getBody() io.Reader {

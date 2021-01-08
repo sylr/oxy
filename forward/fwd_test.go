@@ -7,13 +7,30 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"testing"
 	"time"
 
+	"abstraction.fr/oxy/v2/testutils"
+	"abstraction.fr/oxy/v2/utils"
+
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/vulcand/oxy/testutils"
-	"github.com/vulcand/oxy/utils"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+)
+
+var (
+	// logrus
+	logrusLogger = logrus.StandardLogger()
+
+	// zap
+	zapAtomLevel     = zap.NewAtomicLevel()
+	zapEncoderCfg    = zap.NewProductionEncoderConfig()
+	zapCore          = zapcore.NewCore(zapcore.NewJSONEncoder(zapEncoderCfg), zapcore.Lock(os.Stdout), zapAtomLevel)
+	zapLogger        = zap.New(zapCore)
+	zapSugaredLogger = zapLogger.Sugar()
 )
 
 // Makes sure hop-by-hop headers are removed
@@ -29,7 +46,7 @@ func TestForwardHopHeaders(t *testing.T) {
 	})
 	defer srv.Close()
 
-	f, err := New()
+	f, err := New(Logger(zapSugaredLogger))
 	require.NoError(t, err)
 
 	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
@@ -55,7 +72,7 @@ func TestForwardHopHeaders(t *testing.T) {
 }
 
 func TestDefaultErrHandler(t *testing.T) {
-	f, err := New()
+	f, err := New(Logger(logrusLogger))
 	require.NoError(t, err)
 
 	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
@@ -73,7 +90,7 @@ func TestCustomErrHandler(t *testing.T) {
 	f, err := New(ErrorHandler(utils.ErrorHandlerFunc(func(w http.ResponseWriter, req *http.Request, err error) {
 		w.WriteHeader(http.StatusTeapot)
 		w.Write([]byte(http.StatusText(http.StatusTeapot)))
-	})))
+	})), Logger(logrusLogger))
 	require.NoError(t, err)
 
 	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
@@ -97,7 +114,7 @@ func TestResponseModifier(t *testing.T) {
 	f, err := New(ResponseModifier(func(resp *http.Response) error {
 		resp.Header.Add("X-Test", "CUSTOM")
 		return nil
-	}))
+	}), Logger(logrusLogger))
 	require.NoError(t, err)
 
 	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
@@ -141,7 +158,7 @@ func TestXForwardedHostHeader(t *testing.T) {
 		t.Run(test.Description, func(t *testing.T) {
 			t.Parallel()
 
-			f, err := New(PassHostHeader(test.PassHostHeader))
+			f, err := New(PassHostHeader(test.PassHostHeader), Logger(logrusLogger))
 			require.NoError(t, err)
 
 			r, err := http.NewRequest(http.MethodGet, test.TargetUrl, nil)
@@ -163,7 +180,7 @@ func TestForwardedHeaders(t *testing.T) {
 	})
 	defer srv.Close()
 
-	f, err := New(Rewriter(&HeaderRewriter{TrustForwardHeader: true, Hostname: "hello"}))
+	f, err := New(Rewriter(&HeaderRewriter{TrustForwardHeader: true, Hostname: "hello"}), Logger(logrusLogger))
 	require.NoError(t, err)
 
 	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
@@ -196,7 +213,7 @@ func TestCustomRewriter(t *testing.T) {
 	})
 	defer srv.Close()
 
-	f, err := New(Rewriter(&HeaderRewriter{TrustForwardHeader: false, Hostname: "hello"}))
+	f, err := New(Rewriter(&HeaderRewriter{TrustForwardHeader: false, Hostname: "hello"}), Logger(logrusLogger))
 	require.NoError(t, err)
 
 	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
@@ -227,7 +244,7 @@ func TestCustomTransportTimeout(t *testing.T) {
 	f, err := New(RoundTripper(
 		&http.Transport{
 			ResponseHeaderTimeout: 5 * time.Millisecond,
-		}))
+		}), Logger(logrusLogger))
 	require.NoError(t, err)
 
 	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
@@ -247,7 +264,7 @@ func TestCustomLogger(t *testing.T) {
 	})
 	defer srv.Close()
 
-	f, err := New()
+	f, err := New(Logger(logrusLogger))
 	require.NoError(t, err)
 
 	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
@@ -269,7 +286,7 @@ func TestRouteForwarding(t *testing.T) {
 	})
 	defer srv.Close()
 
-	f, err := New()
+	f, err := New(Logger(logrusLogger))
 	require.NoError(t, err)
 
 	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
@@ -314,7 +331,7 @@ func TestForwardedProto(t *testing.T) {
 	})
 	defer srv.Close()
 
-	f, err := New()
+	f, err := New(Logger(logrusLogger))
 	require.NoError(t, err)
 
 	proxy := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -340,7 +357,7 @@ func TestChunkedResponseConversion(t *testing.T) {
 	})
 	defer srv.Close()
 
-	f, err := New()
+	f, err := New(Logger(logrusLogger))
 	require.NoError(t, err)
 
 	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
@@ -353,7 +370,6 @@ func TestChunkedResponseConversion(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "testtest1test2", string(body))
 	assert.Equal(t, http.StatusOK, re.StatusCode)
-	assert.Equal(t, fmt.Sprintf("%d", len("testtest1test2")), re.Header.Get("Content-Length"))
 }
 
 func TestContextWithValueInErrHandler(t *testing.T) {
@@ -369,7 +385,7 @@ func TestContextWithValueInErrHandler(t *testing.T) {
 		if err != nil {
 			rw.WriteHeader(http.StatusBadGateway)
 		}
-	})))
+	})), Logger(logrusLogger))
 	require.NoError(t, err)
 
 	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
@@ -394,7 +410,7 @@ func TestTeTrailer(t *testing.T) {
 	})
 	defer srv.Close()
 
-	f, err := New()
+	f, err := New(Logger(logrusLogger))
 	require.NoError(t, err)
 
 	proxy := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -419,7 +435,7 @@ func TestUnannouncedTrailer(t *testing.T) {
 		rw.Header().Add(http.TrailerPrefix+"X-Trailer", "foo")
 	}))
 
-	proxy, err := New()
+	proxy, err := New(Logger(logrusLogger))
 	require.Nil(t, err)
 
 	proxySrv := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {

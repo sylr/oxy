@@ -1,9 +1,16 @@
 package roundrobin
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
+	"sync"
 	"time"
+
+	"abstraction.fr/oxy/v2/utils"
+
+	"github.com/segmentio/fasthash/fnv1a"
 )
 
 // CookieOptions has all the options one would like to set on the affinity cookie
@@ -23,11 +30,18 @@ type CookieOptions struct {
 type StickySession struct {
 	cookieName string
 	options    CookieOptions
+	hashCache  map[string]string
+	urlCache   map[*url.URL]string
+	mu         sync.RWMutex
 }
 
 // NewStickySession creates a new StickySession
 func NewStickySession(cookieName string) *StickySession {
-	return &StickySession{cookieName: cookieName}
+	return &StickySession{
+		cookieName: cookieName,
+		hashCache:  make(map[string]string),
+		urlCache:   make(map[*url.URL]string),
+	}
 }
 
 // NewStickySessionWithOptions creates a new StickySession whilst allowing for options to
@@ -47,12 +61,7 @@ func (s *StickySession) GetBackend(req *http.Request, servers []*url.URL) (*url.
 		return nil, false, err
 	}
 
-	serverURL, err := url.Parse(cookie.Value)
-	if err != nil {
-		return nil, false, err
-	}
-
-	if s.isBackendAlive(serverURL, servers) {
+	if found, serverURL := s.isBackendAlive(cookie.Value, servers); found {
 		return serverURL, true, nil
 	}
 	return nil, false, nil
@@ -67,9 +76,12 @@ func (s *StickySession) StickBackend(backend *url.URL, w *http.ResponseWriter) {
 		cp = opt.Path
 	}
 
+	serverURLNoUser := utils.CopyURL(backend)
+	serverURLNoUser.User = nil
+
 	cookie := &http.Cookie{
 		Name:     s.cookieName,
-		Value:    backend.String(),
+		Value:    hash(serverURLNoUser.String()),
 		Path:     cp,
 		Domain:   opt.Domain,
 		Expires:  opt.Expires,
@@ -81,15 +93,97 @@ func (s *StickySession) StickBackend(backend *url.URL, w *http.ResponseWriter) {
 	http.SetCookie(*w, cookie)
 }
 
-func (s *StickySession) isBackendAlive(needle *url.URL, haystack []*url.URL) bool {
+func (s *StickySession) isBackendAlive(needle string, haystack []*url.URL) (bool, *url.URL) {
 	if len(haystack) == 0 {
-		return false
+		return false, nil
 	}
 
-	for _, serverURL := range haystack {
-		if sameURL(needle, serverURL) {
-			return true
+	switch {
+	case strings.Contains(needle, "://"):
+		// Honour old cookies which have URLs instead of hash
+		needleURL, err := url.Parse(needle)
+		if err != nil {
+			return false, nil
+		}
+		for _, serverURL := range haystack {
+			if sameURL(needleURL, serverURL) {
+				return true, serverURL
+			}
+		}
+	default:
+		var h string
+		var urlStr string
+		var found bool
+
+		for _, serverURL := range haystack {
+			s.mu.RLock() // Lock in read mode
+
+			if urlStr, found = s.urlCache[serverURL]; !found {
+				// If we get here the url cache is not populated for this serverURL
+
+				// We are going to modify url cache so we release the read lock
+				s.mu.RUnlock()
+
+				// Copy serverURL and remove user info that we don't want in the
+				// needle/haystack comparison
+				serverURLNoUser := utils.CopyURL(serverURL)
+				serverURLNoUser.User = nil
+
+				// Lock in write mode
+				s.mu.Lock()
+
+				// Truncate the url cache if the number of entries is larger than the haystack
+				if len(s.urlCache) > len(haystack) {
+					s.urlCache = make(map[*url.URL]string)
+				}
+
+				// Add the url string to the cache
+				s.urlCache[serverURL] = serverURLNoUser.String()
+
+				// Release the write lock
+				s.mu.Unlock()
+
+				urlStr = s.urlCache[serverURL]
+
+				// Re-acquire read lock
+				s.mu.RLock()
+			}
+
+			if h, found = s.hashCache[urlStr]; !found {
+				// If we get here the hash cache is not populated for this serverURL
+
+				// We are going to modify hash cache so we release the read lock
+				s.mu.RUnlock()
+
+				h = hash(urlStr)
+
+				// Lock in write mode
+				s.mu.Lock()
+
+				// Truncate the hash cache if the number of entries is larger than the haystack
+				if len(s.hashCache) > len(haystack) {
+					s.hashCache = make(map[string]string)
+				}
+
+				// Add the hash string to the cache
+				s.hashCache[urlStr] = h
+
+				// Relase the write lock
+				s.mu.Unlock()
+			} else {
+				// Release the read lock
+				s.mu.RUnlock()
+			}
+
+			if needle == h {
+				return true, serverURL
+			}
 		}
 	}
-	return false
+
+	return false, nil
+}
+
+func hash(input string) string {
+	return fmt.Sprintf("%x", fnv1a.HashString64(input))
 }

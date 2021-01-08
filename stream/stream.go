@@ -21,7 +21,7 @@ Examples of a streaming middleware:
 
   // sample HTTP handler
   handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-    w.Write([]byte("hello"))
+  	w.Write([]byte("hello"))
   })
 
   // Stream will literally pass through to the next handler without ANY buffering
@@ -34,8 +34,7 @@ package stream
 import (
 	"net/http"
 
-	log "github.com/sirupsen/logrus"
-	"github.com/vulcand/oxy/utils"
+	"abstraction.fr/oxy/v2/utils"
 )
 
 const (
@@ -55,19 +54,16 @@ type Stream struct {
 	next       http.Handler
 	errHandler utils.ErrorHandler
 
-	log *log.Logger
+	log utils.Logger
 }
 
 // New returns a new streamer middleware. New() function supports optional functional arguments
 func New(next http.Handler, setters ...optSetter) (*Stream, error) {
 	strm := &Stream{
-		next: next,
-
-		maxRequestBodyBytes: DefaultMaxBodyBytes,
-
+		next:                 next,
+		maxRequestBodyBytes:  DefaultMaxBodyBytes,
 		maxResponseBodyBytes: DefaultMaxBodyBytes,
-
-		log: log.StandardLogger(),
+		log:                  &utils.DefaultLogger{},
 	}
 	for _, s := range setters {
 		if err := s(strm); err != nil {
@@ -78,9 +74,7 @@ func New(next http.Handler, setters ...optSetter) (*Stream, error) {
 }
 
 // Logger defines the logger the streamer will use.
-//
-// It defaults to logrus.StandardLogger(), the global logger used by logrus.
-func Logger(l *log.Logger) optSetter {
+func Logger(l utils.Logger) optSetter {
 	return func(s *Stream) error {
 		s.log = l
 		return nil
@@ -96,11 +90,5 @@ func (s *Stream) Wrap(next http.Handler) error {
 }
 
 func (s *Stream) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if s.log.Level >= log.DebugLevel {
-		logEntry := s.log.WithField("Request", utils.DumpHttpRequest(req))
-		logEntry.Debug("vulcand/oxy/stream: begin ServeHttp on request")
-		defer logEntry.Debug("vulcand/oxy/stream: completed ServeHttp on request")
-	}
-
 	s.next.ServeHTTP(w, req)
 }

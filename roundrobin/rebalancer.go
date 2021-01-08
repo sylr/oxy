@@ -7,10 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mailgun/timetools"
-	log "github.com/sirupsen/logrus"
-	"github.com/vulcand/oxy/memmetrics"
-	"github.com/vulcand/oxy/utils"
+	"abstraction.fr/oxy/v2/memmetrics"
+	"abstraction.fr/oxy/v2/utils"
+	"github.com/mailgun/holster/v3/clock"
 )
 
 // RebalancerOption - functional option setter for rebalancer
@@ -31,8 +30,6 @@ type NewMeterFn func() (Meter, error)
 type Rebalancer struct {
 	// mutex
 	mtx *sync.Mutex
-	// As usual, control time in tests
-	clock timetools.TimeProvider
 	// Time that freezes state machine to accumulate stats after updating the weights
 	backoffDuration time.Duration
 	// Timer is set to give probing some time to take place
@@ -54,15 +51,7 @@ type Rebalancer struct {
 
 	requestRewriteListener RequestRewriteListener
 
-	log *log.Logger
-}
-
-// RebalancerClock sets a clock
-func RebalancerClock(clock timetools.TimeProvider) RebalancerOption {
-	return func(r *Rebalancer) error {
-		r.clock = clock
-		return nil
-	}
+	log utils.Logger
 }
 
 // RebalancerBackoff sets a beck off duration
@@ -111,23 +100,19 @@ func NewRebalancer(handler balancerHandler, opts ...RebalancerOption) (*Rebalanc
 		mtx:           &sync.Mutex{},
 		next:          handler,
 		stickySession: nil,
-
-		log: log.StandardLogger(),
+		log:           &utils.DefaultLogger{},
 	}
 	for _, o := range opts {
 		if err := o(rb); err != nil {
 			return nil, err
 		}
 	}
-	if rb.clock == nil {
-		rb.clock = &timetools.RealTime{}
-	}
 	if rb.backoffDuration == 0 {
 		rb.backoffDuration = 10 * time.Second
 	}
 	if rb.newMeter == nil {
 		rb.newMeter = func() (Meter, error) {
-			rc, err := memmetrics.NewRatioCounter(10, time.Second, memmetrics.RatioClock(rb.clock))
+			rc, err := memmetrics.NewRatioCounter(10, time.Second)
 			if err != nil {
 				return nil, err
 			}
@@ -145,9 +130,7 @@ func NewRebalancer(handler balancerHandler, opts ...RebalancerOption) (*Rebalanc
 }
 
 // RebalancerLogger defines the logger the rebalancer will use.
-//
-// It defaults to logrus.StandardLogger(), the global logger used by logrus.
-func RebalancerLogger(l *log.Logger) RebalancerOption {
+func RebalancerLogger(l utils.Logger) RebalancerOption {
 	return func(rb *Rebalancer) error {
 		rb.log = l
 		return nil
@@ -163,14 +146,8 @@ func (rb *Rebalancer) Servers() []*url.URL {
 }
 
 func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if rb.log.Level >= log.DebugLevel {
-		logEntry := rb.log.WithField("Request", utils.DumpHttpRequest(req))
-		logEntry.Debug("vulcand/oxy/roundrobin/rebalancer: begin ServeHttp on request")
-		defer logEntry.Debug("vulcand/oxy/roundrobin/rebalancer: completed ServeHttp on request")
-	}
-
 	pw := utils.NewProxyWriter(w)
-	start := rb.clock.UtcNow()
+	start := clock.Now().UTC()
 
 	// make shallow copy of request before changing anything to avoid side effects
 	newReq := *req
@@ -180,7 +157,7 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		cookieUrl, present, err := rb.stickySession.GetBackend(&newReq, rb.Servers())
 
 		if err != nil {
-			log.Warnf("vulcand/oxy/roundrobin/rebalancer: error using server from cookie: %v", err)
+			rb.log.Warnf("vulcand/oxy/roundrobin/rebalancer: error using server from cookie: %v", err)
 		}
 
 		if present {
@@ -194,11 +171,6 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		if err != nil {
 			rb.errHandler.ServeHTTP(w, req, err)
 			return
-		}
-
-		if log.GetLevel() >= log.DebugLevel {
-			// log which backend URL we're sending this request to
-			log.WithFields(log.Fields{"Request": utils.DumpHttpRequest(req), "ForwardURL": fwdURL}).Debugf("vulcand/oxy/roundrobin/rebalancer: Forwarding this request to URL")
 		}
 
 		if rb.stickySession != nil {
@@ -215,7 +187,7 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	rb.next.Next().ServeHTTP(pw, &newReq)
 
-	rb.recordMetrics(newReq.URL, pw.StatusCode(), rb.clock.UtcNow().Sub(start))
+	rb.recordMetrics(newReq.URL, pw.StatusCode(), clock.Now().UTC().Sub(start))
 	rb.adjustWeights()
 }
 
@@ -232,7 +204,7 @@ func (rb *Rebalancer) reset() {
 		s.curWeight = s.origWeight
 		rb.next.UpsertServer(s.url, Weight(s.origWeight))
 	}
-	rb.timer = rb.clock.UtcNow().Add(-1 * time.Second)
+	rb.timer = clock.Now().UTC().Add(-1 * time.Second)
 	rb.ratings = make([]float64, len(rb.servers))
 }
 
@@ -370,11 +342,11 @@ func (rb *Rebalancer) setMarkedWeights() bool {
 }
 
 func (rb *Rebalancer) setTimer() {
-	rb.timer = rb.clock.UtcNow().Add(rb.backoffDuration)
+	rb.timer = clock.Now().UTC().Add(rb.backoffDuration)
 }
 
 func (rb *Rebalancer) timerExpired() bool {
-	return rb.timer.Before(rb.clock.UtcNow())
+	return rb.timer.Before(clock.Now().UTC())
 }
 
 func (rb *Rebalancer) metricsReady() bool {
@@ -416,7 +388,7 @@ func (rb *Rebalancer) convergeWeights() bool {
 		}
 		changed = true
 		newWeight := decrease(s.origWeight, s.curWeight)
-		log.Debugf("decreasing weight of %v from %v to %v", s.url, s.curWeight, newWeight)
+		rb.log.Debugf("decreasing weight of %v from %v to %v", s.url, s.curWeight, newWeight)
 		s.curWeight = newWeight
 	}
 	if !changed {

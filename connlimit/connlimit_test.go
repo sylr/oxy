@@ -4,12 +4,29 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
+	"abstraction.fr/oxy/v2/testutils"
+	"abstraction.fr/oxy/v2/utils"
+
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/vulcand/oxy/testutils"
-	"github.com/vulcand/oxy/utils"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+)
+
+var (
+	// logrus
+	logrusLogger = logrus.StandardLogger()
+
+	// zap
+	zapAtomLevel     = zap.NewAtomicLevel()
+	zapEncoderCfg    = zap.NewProductionEncoderConfig()
+	zapCore          = zapcore.NewCore(zapcore.NewJSONEncoder(zapEncoderCfg), zapcore.Lock(os.Stdout), zapAtomLevel)
+	zapLogger        = zap.New(zapCore)
+	zapSugaredLogger = zapLogger.Sugar()
 )
 
 // We've hit the limit and were able to proceed once the request has completed
@@ -27,7 +44,7 @@ func TestHitLimitAndRelease(t *testing.T) {
 		w.Write([]byte("hello"))
 	})
 
-	cl, err := New(handler, headerLimit, 1)
+	cl, err := New(handler, headerLimit, 1, Logger(zapSugaredLogger))
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(cl)
@@ -71,7 +88,7 @@ func TestCustomHandlers(t *testing.T) {
 		w.Write([]byte(http.StatusText(http.StatusTeapot)))
 	})
 
-	l, err := New(handler, headerLimit, 0, ErrorHandler(errHandler))
+	l, err := New(handler, headerLimit, 0, ErrorHandler(errHandler), Logger(logrusLogger))
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(l)
@@ -88,7 +105,7 @@ func TestFaultyExtract(t *testing.T) {
 		w.Write([]byte("hello"))
 	})
 
-	l, err := New(handler, faultyExtract, 1)
+	l, err := New(handler, faultyExtract, 1, Logger(logrusLogger))
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(l)

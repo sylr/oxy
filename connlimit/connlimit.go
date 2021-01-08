@@ -6,8 +6,7 @@ import (
 	"net/http"
 	"sync"
 
-	log "github.com/sirupsen/logrus"
-	"github.com/vulcand/oxy/utils"
+	"abstraction.fr/oxy/v2/utils"
 )
 
 // ConnLimiter tracks concurrent connection per token
@@ -21,7 +20,7 @@ type ConnLimiter struct {
 	next             http.Handler
 
 	errHandler utils.ErrorHandler
-	log        *log.Logger
+	log        utils.Logger
 }
 
 // New creates a new ConnLimiter
@@ -35,7 +34,7 @@ func New(next http.Handler, extract utils.SourceExtractor, maxConnections int64,
 		maxConnections: maxConnections,
 		connections:    make(map[string]int64),
 		next:           next,
-		log:            log.StandardLogger(),
+		log:            &utils.DefaultLogger{},
 	}
 
 	for _, o := range options {
@@ -52,9 +51,7 @@ func New(next http.Handler, extract utils.SourceExtractor, maxConnections int64,
 }
 
 // Logger defines the logger the connection limiter will use.
-//
-// It defaults to logrus.StandardLogger(), the global logger used by logrus.
-func Logger(l *log.Logger) ConnLimitOption {
+func Logger(l utils.Logger) ConnLimitOption {
 	return func(cl *ConnLimiter) error {
 		cl.log = l
 		return nil
@@ -122,16 +119,10 @@ func (m *MaxConnError) Error() string {
 
 // ConnErrHandler connection limiter error handler
 type ConnErrHandler struct {
-	log *log.Logger
+	log utils.Logger
 }
 
 func (e *ConnErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
-	if e.log.Level >= log.DebugLevel {
-		logEntry := e.log.WithField("Request", utils.DumpHttpRequest(req))
-		logEntry.Debug("vulcand/oxy/connlimit: begin ServeHttp on request")
-		defer logEntry.Debug("vulcand/oxy/connlimit: completed ServeHttp on request")
-	}
-
 	if _, ok := err.(*MaxConnError); ok {
 		w.WriteHeader(429)
 		w.Write([]byte(err.Error()))

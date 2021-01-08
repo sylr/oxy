@@ -6,8 +6,7 @@ import (
 	"net/url"
 	"strconv"
 
-	log "github.com/sirupsen/logrus"
-	"github.com/vulcand/oxy/utils"
+	"abstraction.fr/oxy/v2/utils"
 )
 
 // Response response model
@@ -19,13 +18,12 @@ type Response struct {
 
 // ResponseFallback fallback response handler
 type ResponseFallback struct {
-	r Response
-
-	log *log.Logger
+	r   Response
+	log utils.Logger
 }
 
 // NewResponseFallbackWithLogger creates a new ResponseFallback
-func NewResponseFallbackWithLogger(r Response, l *log.Logger) (*ResponseFallback, error) {
+func NewResponseFallbackWithLogger(r Response, l utils.Logger) (*ResponseFallback, error) {
 	if r.StatusCode == 0 {
 		return nil, fmt.Errorf("response code should not be 0")
 	}
@@ -34,16 +32,10 @@ func NewResponseFallbackWithLogger(r Response, l *log.Logger) (*ResponseFallback
 
 // NewResponseFallback creates a new ResponseFallback
 func NewResponseFallback(r Response) (*ResponseFallback, error) {
-	return NewResponseFallbackWithLogger(r, log.StandardLogger())
+	return NewResponseFallbackWithLogger(r, &utils.DefaultLogger{})
 }
 
 func (f *ResponseFallback) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if f.log.Level >= log.DebugLevel {
-		logEntry := f.log.WithField("Request", utils.DumpHttpRequest(req))
-		logEntry.Debug("vulcand/oxy/fallback/response: begin ServeHttp on request")
-		defer logEntry.Debug("vulcand/oxy/fallback/response: completed ServeHttp on request")
-	}
-
 	if f.r.ContentType != "" {
 		w.Header().Set("Content-Type", f.r.ContentType)
 	}
@@ -51,7 +43,7 @@ func (f *ResponseFallback) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(f.r.StatusCode)
 	_, err := w.Write(f.r.Body)
 	if err != nil {
-		f.log.Errorf("vulcand/oxy/fallback/response: failed to write response, err: %v", err)
+		f.log.Errorf("fallback/response: failed to write response, err: %v", err)
 	}
 }
 
@@ -63,15 +55,13 @@ type Redirect struct {
 
 // RedirectFallback fallback redirect handler
 type RedirectFallback struct {
-	r Redirect
-
-	u *url.URL
-
-	log *log.Logger
+	r   Redirect
+	u   *url.URL
+	log utils.Logger
 }
 
 // NewRedirectFallbackWithLogger creates a new RedirectFallback
-func NewRedirectFallbackWithLogger(r Redirect, l *log.Logger) (*RedirectFallback, error) {
+func NewRedirectFallbackWithLogger(r Redirect, l utils.Logger) (*RedirectFallback, error) {
 	u, err := url.ParseRequestURI(r.URL)
 	if err != nil {
 		return nil, err
@@ -81,16 +71,10 @@ func NewRedirectFallbackWithLogger(r Redirect, l *log.Logger) (*RedirectFallback
 
 // NewRedirectFallback creates a new RedirectFallback
 func NewRedirectFallback(r Redirect) (*RedirectFallback, error) {
-	return NewRedirectFallbackWithLogger(r, log.StandardLogger())
+	return NewRedirectFallbackWithLogger(r, &utils.DefaultLogger{})
 }
 
 func (f *RedirectFallback) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if f.log.Level >= log.DebugLevel {
-		logEntry := f.log.WithField("Request", utils.DumpHttpRequest(req))
-		logEntry.Debug("vulcand/oxy/fallback/redirect: begin ServeHttp on request")
-		defer logEntry.Debug("vulcand/oxy/fallback/redirect: completed ServeHttp on request")
-	}
-
 	location := f.u.String()
 	if f.r.PreservePath {
 		location += req.URL.Path
@@ -100,6 +84,6 @@ func (f *RedirectFallback) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusFound)
 	_, err := w.Write([]byte(http.StatusText(http.StatusFound)))
 	if err != nil {
-		f.log.Errorf("vulcand/oxy/fallback/redirect: failed to write response, err: %v", err)
+		f.log.Errorf("fallback/redirect: failed to write response, err: %v", err)
 	}
 }

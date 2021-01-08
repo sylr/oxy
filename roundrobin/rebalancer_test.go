@@ -7,10 +7,12 @@ import (
 	"testing"
 	"time"
 
+	"abstraction.fr/oxy/v2/forward"
+	"abstraction.fr/oxy/v2/testutils"
+
+	"github.com/mailgun/holster/v3/clock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/vulcand/oxy/forward"
-	"github.com/vulcand/oxy/testutils"
 )
 
 func TestRebalancerNormalOperation(t *testing.T) {
@@ -85,6 +87,8 @@ func TestRebalancerRemoveServer(t *testing.T) {
 
 // Test scenario when one server goes down after what it recovers
 func TestRebalancerRecovery(t *testing.T) {
+	defer clock.Freeze(time.Now()).Unfreeze()
+
 	a, b := testutils.NewResponder("a"), testutils.NewResponder("b")
 	defer a.Close()
 	defer b.Close()
@@ -99,9 +103,7 @@ func TestRebalancerRecovery(t *testing.T) {
 		return &testMeter{}, nil
 	}
 
-	clock := testutils.GetClock()
-
-	rb, err := NewRebalancer(lb, RebalancerMeter(newMeter), RebalancerClock(clock))
+	rb, err := NewRebalancer(lb, RebalancerMeter(newMeter))
 	require.NoError(t, err)
 
 	err = rb.UpsertServer(testutils.ParseURI(a.URL))
@@ -119,7 +121,7 @@ func TestRebalancerRecovery(t *testing.T) {
 		require.NoError(t, err)
 		_, _, err = testutils.Get(proxy.URL)
 		require.NoError(t, err)
-		clock.CurrentTime = clock.CurrentTime.Add(rb.backoffDuration + time.Second)
+		clock.Advance(rb.backoffDuration + time.Second)
 	}
 
 	assert.Equal(t, 1, rb.servers[0].curWeight)
@@ -136,7 +138,7 @@ func TestRebalancerRecovery(t *testing.T) {
 		require.NoError(t, err)
 		_, _, err = testutils.Get(proxy.URL)
 		require.NoError(t, err)
-		clock.CurrentTime = clock.CurrentTime.Add(rb.backoffDuration + time.Second)
+		clock.Advance(rb.backoffDuration + time.Second)
 	}
 
 	assert.Equal(t, 1, rb.servers[0].curWeight)
@@ -149,6 +151,8 @@ func TestRebalancerRecovery(t *testing.T) {
 
 // Test scenario when increaing the weight on good endpoints made it worse
 func TestRebalancerCascading(t *testing.T) {
+	defer clock.Freeze(time.Now()).Unfreeze()
+
 	a, b, d := testutils.NewResponder("a"), testutils.NewResponder("b"), testutils.NewResponder("d")
 	defer a.Close()
 	defer b.Close()
@@ -164,9 +168,7 @@ func TestRebalancerCascading(t *testing.T) {
 		return &testMeter{}, nil
 	}
 
-	clock := testutils.GetClock()
-
-	rb, err := NewRebalancer(lb, RebalancerMeter(newMeter), RebalancerClock(clock))
+	rb, err := NewRebalancer(lb, RebalancerMeter(newMeter))
 	require.NoError(t, err)
 
 	err = rb.UpsertServer(testutils.ParseURI(a.URL))
@@ -186,7 +188,7 @@ func TestRebalancerCascading(t *testing.T) {
 		require.NoError(t, err)
 		_, _, err = testutils.Get(proxy.URL)
 		require.NoError(t, err)
-		clock.CurrentTime = clock.CurrentTime.Add(rb.backoffDuration + time.Second)
+		clock.Advance(rb.backoffDuration + time.Second)
 	}
 
 	// We have increased the load, and the situation became worse as the other servers started failing
@@ -204,7 +206,7 @@ func TestRebalancerCascading(t *testing.T) {
 		require.NoError(t, err)
 		_, _, err = testutils.Get(proxy.URL)
 		require.NoError(t, err)
-		clock.CurrentTime = clock.CurrentTime.Add(rb.backoffDuration + time.Second)
+		clock.Advance(rb.backoffDuration + time.Second)
 	}
 
 	// the algo reverted it back
@@ -215,6 +217,8 @@ func TestRebalancerCascading(t *testing.T) {
 
 // Test scenario when all servers started failing
 func TestRebalancerAllBad(t *testing.T) {
+	defer clock.Freeze(time.Now()).Unfreeze()
+
 	a, b, d := testutils.NewResponder("a"), testutils.NewResponder("b"), testutils.NewResponder("d")
 	defer a.Close()
 	defer b.Close()
@@ -230,9 +234,7 @@ func TestRebalancerAllBad(t *testing.T) {
 		return &testMeter{}, nil
 	}
 
-	clock := testutils.GetClock()
-
-	rb, err := NewRebalancer(lb, RebalancerMeter(newMeter), RebalancerClock(clock))
+	rb, err := NewRebalancer(lb, RebalancerMeter(newMeter))
 	require.NoError(t, err)
 
 	err = rb.UpsertServer(testutils.ParseURI(a.URL))
@@ -254,7 +256,7 @@ func TestRebalancerAllBad(t *testing.T) {
 		require.NoError(t, err)
 		_, _, err = testutils.Get(proxy.URL)
 		require.NoError(t, err)
-		clock.CurrentTime = clock.CurrentTime.Add(rb.backoffDuration + time.Second)
+		clock.Advance(rb.backoffDuration + time.Second)
 	}
 
 	// load balancer does nothing
@@ -265,6 +267,8 @@ func TestRebalancerAllBad(t *testing.T) {
 
 // Removing the server resets the state
 func TestRebalancerReset(t *testing.T) {
+	defer clock.Freeze(time.Now()).Unfreeze()
+
 	a, b, d := testutils.NewResponder("a"), testutils.NewResponder("b"), testutils.NewResponder("d")
 	defer a.Close()
 	defer b.Close()
@@ -280,9 +284,7 @@ func TestRebalancerReset(t *testing.T) {
 		return &testMeter{}, nil
 	}
 
-	clock := testutils.GetClock()
-
-	rb, err := NewRebalancer(lb, RebalancerMeter(newMeter), RebalancerClock(clock))
+	rb, err := NewRebalancer(lb, RebalancerMeter(newMeter))
 	require.NoError(t, err)
 
 	err = rb.UpsertServer(testutils.ParseURI(a.URL))
@@ -304,7 +306,7 @@ func TestRebalancerReset(t *testing.T) {
 		require.NoError(t, err)
 		_, _, err = testutils.Get(proxy.URL)
 		require.NoError(t, err)
-		clock.CurrentTime = clock.CurrentTime.Add(rb.backoffDuration + time.Second)
+		clock.Advance(rb.backoffDuration + time.Second)
 	}
 
 	// load balancer changed weights
@@ -321,6 +323,8 @@ func TestRebalancerReset(t *testing.T) {
 }
 
 func TestRebalancerRequestRewriteListenerLive(t *testing.T) {
+	defer clock.Freeze(time.Now()).Unfreeze()
+
 	a, b := testutils.NewResponder("a"), testutils.NewResponder("b")
 	defer a.Close()
 	defer b.Close()
@@ -331,9 +335,7 @@ func TestRebalancerRequestRewriteListenerLive(t *testing.T) {
 	lb, err := New(fwd)
 	require.NoError(t, err)
 
-	clock := testutils.GetClock()
-
-	rb, err := NewRebalancer(lb, RebalancerBackoff(time.Millisecond), RebalancerClock(clock))
+	rb, err := NewRebalancer(lb, RebalancerBackoff(time.Millisecond))
 	require.NoError(t, err)
 
 	err = rb.UpsertServer(testutils.ParseURI(a.URL))
@@ -350,7 +352,7 @@ func TestRebalancerRequestRewriteListenerLive(t *testing.T) {
 		_, _, err = testutils.Get(proxy.URL)
 		require.NoError(t, err)
 		if i%10 == 0 {
-			clock.CurrentTime = clock.CurrentTime.Add(rb.backoffDuration + time.Second)
+			clock.Advance(rb.backoffDuration + time.Second)
 		}
 	}
 
@@ -410,7 +412,7 @@ func TestRebalancerStickySession(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		req, err := http.NewRequest(http.MethodGet, proxy.URL, nil)
 		require.NoError(t, err)
-		req.AddCookie(&http.Cookie{Name: "test", Value: a.URL})
+		req.AddCookie(&http.Cookie{Name: "test", Value: hash(a.URL)})
 
 		resp, err := http.DefaultClient.Do(req)
 		require.NoError(t, err)

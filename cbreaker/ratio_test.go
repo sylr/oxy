@@ -5,15 +5,17 @@ import (
 	"testing"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"abstraction.fr/oxy/v2/utils"
+
+	"github.com/mailgun/holster/v3/clock"
 	"github.com/stretchr/testify/assert"
-	"github.com/vulcand/oxy/testutils"
 )
 
 func TestRampUp(t *testing.T) {
-	clock := testutils.GetClock()
+	defer clock.Freeze(time.Now()).Unfreeze()
+
 	duration := 10 * time.Second
-	rc := newRatioController(clock, duration, log.StandardLogger())
+	rc := newRatioController(duration, &utils.DefaultLogger{})
 
 	allowed, denied := 0, 0
 	for i := 0; i < int(duration/time.Millisecond); i++ {
@@ -21,7 +23,7 @@ func TestRampUp(t *testing.T) {
 		expected := rc.targetRatio()
 		diff := math.Abs(expected - ratio)
 		assert.EqualValues(t, 0, round(diff, 0.5, 1))
-		clock.CurrentTime = clock.CurrentTime.Add(time.Millisecond)
+		clock.Advance(time.Millisecond)
 	}
 }
 
