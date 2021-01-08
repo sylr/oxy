@@ -9,6 +9,7 @@ require (
 	github.com/jonboulle/clockwork v0.2.2 // indirect
 	github.com/mailgun/holster/v3 v3.15.2
 	github.com/mailgun/multibuf v0.0.0-20150714184110-565402cd71fb
+	github.com/segmentio/fasthash v1.0.2
 	github.com/sirupsen/logrus v1.7.0
 	github.com/stretchr/testify v1.6.1
 	github.com/vulcand/predicate v1.1.0
